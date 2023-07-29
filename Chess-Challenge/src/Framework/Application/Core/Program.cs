@@ -1,14 +1,19 @@
-using Raylib_cs;
+﻿using Raylib_cs;
 using System.IO;
+using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using ChessChallenge.API;
 
 namespace ChessChallenge.Application
 {
     static class Program
     {
         const bool hideRaylibLogs = true;
-        static Camera2D cam;
+        public static Camera2D cam;
+        public static ChallengeController controller = new();
+        public static Router router = new();
+        public static List<IChessBot> bots = new();
 
         public static void Main()
         {
@@ -29,20 +34,16 @@ namespace ChessChallenge.Application
 
             UpdateCamera(screenWidth, screenHeight);
 
-            ChallengeController controller = new();
+            router.AddPage("main", new MainPage());
+            router.GoToPage("main");
 
             while (!Raylib.WindowShouldClose())
             {
                 Raylib.BeginDrawing();
+
                 Raylib.ClearBackground(new Color(22, 22, 22, 255));
-                Raylib.BeginMode2D(cam);
 
-                controller.Update();
-                controller.Draw();
-
-                Raylib.EndMode2D();
-
-                controller.DrawOverlay();
+                router.GetCurrentPage().Show();
 
                 Raylib.EndDrawing();
             }
