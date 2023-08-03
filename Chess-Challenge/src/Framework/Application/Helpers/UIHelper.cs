@@ -1,4 +1,4 @@
-using Raylib_cs;
+﻿using Raylib_cs;
 using System;
 using System.IO;
 using System.Numerics;
@@ -11,9 +11,9 @@ namespace ChessChallenge.Application
         const string fontName = "OPENSANS-SEMIBOLD.TTF";
         const int referenceResolution = 1920;
 
-        static Font font;
-        static Font fontSdf;
-        static Shader shader;
+        public static Font font;
+        public static Font fontSdf;
+        public static Shader shader;
 
         public enum AlignH
         {

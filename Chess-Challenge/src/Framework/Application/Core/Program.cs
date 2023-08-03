@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using ChessChallenge.API;
+using ChessChallenge.Application.UI;
 
 namespace ChessChallenge.Application
 {
@@ -29,12 +30,18 @@ namespace ChessChallenge.Application
                 }
             }
 
+            Raylib.SetConfigFlags(ConfigFlags.FLAG_WINDOW_RESIZABLE);
+            // Setting min size causes an error:
+            // dotnet: external/glfw/src/monitor.c:451: glfwGetVideoMode: Assertion `monitor != NULL' failed.
+            // Raylib.SetWindowMinSize(800, 600);
             Raylib.InitWindow(screenWidth, screenHeight, "Chess Coding Challenge");
             Raylib.SetTargetFPS(60);
 
             UpdateCamera(screenWidth, screenHeight);
 
             router.AddPage("main", new MainPage());
+            router.AddPage("add_bot", new AddBotPage());
+            router.AddPage("manage_bots", new ManageBotsPage());
             router.GoToPage("main");
 
             while (!Raylib.WindowShouldClose())
@@ -42,6 +49,7 @@ namespace ChessChallenge.Application
                 Raylib.BeginDrawing();
 
                 Raylib.ClearBackground(new Color(22, 22, 22, 255));
+                ComponentUI.Start();
 
                 router.GetCurrentPage().Show();
 

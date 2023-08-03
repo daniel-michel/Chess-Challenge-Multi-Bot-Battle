@@ -19,6 +19,7 @@ namespace ChessChallenge.Application
 
         public static string SavedGamesPath => Path.Combine(AppDataPath, "Games");
         public static string PrefsFilePath => Path.Combine(AppDataPath, "prefs.txt");
+        public static string BotDirectory => Path.Combine(AppDataPath, "Bots");
 
         public static string GetUniqueFileName(string path, string fileName, string fileExtension)
         {
