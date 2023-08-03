@@ -21,7 +21,8 @@ namespace ChessChallenge.Application
 
         private BotInfo? info;
         private string? code;
-        private int? tokenCount;
+        private int? totalTokenCount;
+        private int? debugTokenCount;
         private Type? chessBotType = null;
         public readonly string hash;
 
@@ -53,15 +54,26 @@ namespace ChessChallenge.Application
                 return code;
             }
         }
-        public int TokenCount
+        public int TotalTokenCount
         {
             get
             {
-                if (tokenCount == null)
+                if (totalTokenCount == null)
                 {
-                    tokenCount = TokenCounter.CountTokens(Code);
+                    (totalTokenCount, debugTokenCount) = TokenCounter.CountTokens(Code);
                 }
-                return tokenCount.Value;
+                return totalTokenCount.Value;
+            }
+        }
+        public int DebugTokenCount
+        {
+            get
+            {
+                if (debugTokenCount == null)
+                {
+                    (totalTokenCount, debugTokenCount) = TokenCounter.CountTokens(Code);
+                }
+                return debugTokenCount.Value;
             }
         }
 
@@ -69,7 +81,6 @@ namespace ChessChallenge.Application
         {
             info = new BotInfo { Name = name, Identifier = identifier, Description = "" };
             this.code = code;
-            tokenCount = TokenCounter.CountTokens(this.code);
             hash = SyntaxTreeHashGenerator.GenerateHash(this.code);
             Directory.CreateDirectory(FileHelper.BotDirectory);
             File.WriteAllText(CodePath, this.code);
