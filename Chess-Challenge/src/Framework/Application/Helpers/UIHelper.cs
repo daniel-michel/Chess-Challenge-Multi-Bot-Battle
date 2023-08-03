@@ -76,9 +76,9 @@ namespace ChessChallenge.Application
             }
         }
 
-        public static bool Button(string text, Vector2 center, Vector2 size)
+        public static bool Button(string text, Vector2 centre, Vector2 size)
         {
-            Rectangle rec = new(center.X - size.X / 2, center.Y - size.Y / 2, size.X, size.Y);
+            Rectangle rec = new(centre.X - size.X / 2, centre.Y - size.Y / 2, size.X, size.Y);
 
             Color normalCol = new(40, 40, 40, 255);
             Color hoverCol = new(3, 173, 252, 255);
@@ -93,7 +93,7 @@ namespace ChessChallenge.Application
             Color textCol = mouseOver ? Color.WHITE : new Color(180, 180, 180, 255);
             int fontSize = ScaleInt(32);
 
-            DrawText(text, center, fontSize, 1, textCol, AlignH.Centre);
+            DrawText(text, centre, fontSize, 1, textCol, AlignH.Centre);
 
             return pressedThisFrame;
         }
