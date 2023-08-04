@@ -31,7 +31,7 @@ namespace ChessChallenge.Application
     }
     record SourcePathDescription(string Path) : SourceOrSourcePathDescription(Path)
     {
-        public override string ToString() => BotSourcer.ClampString(Path, 60);
+        public override string ToString() => BotSourcer.ClampString(Path, 40);
     }
     record GitRepositorySourcePathDescription(string Path) : SourcePathDescription(Path)
     {
@@ -43,7 +43,7 @@ namespace ChessChallenge.Application
     }
     record GitCommitSourcePathDescription(string Path, string Branch, string CommitHash, string CommitMessage) : GitBranchSourcePathDescription(Path, Branch)
     {
-        public override string ToString() => $"{base.ToString()}#{CommitHash[..8]}:{BotSourcer.ClampStringStart(CommitMessage, 40)}";
+        public override string ToString() => $"{base.ToString()}#{BotSourcer.ClampStringStart(CommitMessage, 40)}";
     }
 
 
