@@ -35,9 +35,16 @@ namespace ChessChallenge.Application.UI
                 padding: padding,
                 child: () =>
                 {
-                    Vector2 boundSize = Raylib.MeasureTextEx(UIHelper.font, text, UIHelper.ScaleInt(fontSize), 1);
-                    float scaleFactor = Math.Min(Math.Min(CurrentWidth / boundSize.X, CurrentHeight / boundSize.Y), 1f);
-                    fontSize = (int)(fontSize * scaleFactor);
+                    for (int i = 0; i < 3; i++)
+                    {
+                        Vector2 boundSize = Raylib.MeasureTextEx(UIHelper.font, text, UIHelper.ScaleInt(fontSize), 1);
+                        float scaleFactor = Math.Min(CurrentWidth / boundSize.X, CurrentHeight / boundSize.Y) * 0.98f;
+                        if (scaleFactor >= 1)
+                        {
+                            break;
+                        }
+                        fontSize = (int)(fontSize * scaleFactor);
+                    }
                     Text(text, fontSize, padding, align);
                 }
             );

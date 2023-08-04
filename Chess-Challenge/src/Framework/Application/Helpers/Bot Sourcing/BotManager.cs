@@ -72,7 +72,7 @@ namespace ChessChallenge.Application
                 if (file.EndsWith(".cs"))
                 {
                     string name = Path.GetFileNameWithoutExtension(file);
-                    AddBot(new BotSource(name));
+                    AddBot(new BotSource(name.ToLower()));
                 }
             }
         }

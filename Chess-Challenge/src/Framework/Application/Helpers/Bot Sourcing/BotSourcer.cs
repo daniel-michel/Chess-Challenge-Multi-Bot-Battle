@@ -12,40 +12,38 @@ namespace ChessChallenge.Application
     {
         public abstract string GetFileName();
         public abstract string GetFileContents();
-        public virtual string GetShortIdentifier() => BotSourcer.ClampStringLength(Path, 20);
+        public virtual string GetShortIdentifier() => BotSourcer.ClampStringEnd(Path, 20);
     }
     record FileSourceDescription(string Path) : SourceDescription(Path)
     {
         public override string GetFileName() => System.IO.Path.GetFileName(Path);
         public override string GetFileContents() => File.ReadAllText(Path);
     }
-    record GitCommitFileSourceDescription(string Path, string CommitHash, string GitPath) : SourceDescription(Path)
+    record GitCommitFileSourceDescription(string Path, string CommitHash, string CommitMessage, string GitPath) : SourceDescription(Path)
     {
         public override string GetFileName() => System.IO.Path.GetFileName(GitPath);
         public override string GetFileContents() => BotSourcer.ReadFileFromRepository(Path, CommitHash, GitPath);
         public override string ToString() => base.ToString() + "@" + CommitHash[..8];
-        public override string GetShortIdentifier() => $"{base.GetShortIdentifier()}@{CommitHash[..8]}:{BotSourcer.ClampStringLength(GitPath, 20)}";
+        public override string GetShortIdentifier()
+            => base.GetShortIdentifier() +
+            "#" + CommitHash[..8] + " " + BotSourcer.ClampStringStart(CommitMessage, 40) +
+            ":" + BotSourcer.ClampStringEnd(GitPath, 20);
     }
-
     record SourcePathDescription(string Path) : SourceOrSourcePathDescription(Path)
     {
-        public override string ToString() => Path;
+        public override string ToString() => BotSourcer.ClampString(Path, 60);
     }
     record GitRepositorySourcePathDescription(string Path) : SourcePathDescription(Path)
     {
-        public override string ToString() => $"{Path}@";
-    }
-    record GitWorkingTreeSourcePathDescription(string Path) : GitRepositorySourcePathDescription(Path)
-    {
-        public override string ToString() => $"{Path}@working tree";
+        public override string ToString() => $"{base.ToString()}@";
     }
     record GitBranchSourcePathDescription(string Path, string Branch) : GitRepositorySourcePathDescription(Path)
     {
-        public override string ToString() => $"{Path}@{Branch}";
+        public override string ToString() => $"{base.ToString()}{BotSourcer.ClampString(Branch, 20)}";
     }
-    record GitCommitSourcePathDescription(string Path, string Branch, string CommitHash) : GitBranchSourcePathDescription(Path, Branch)
+    record GitCommitSourcePathDescription(string Path, string Branch, string CommitHash, string CommitMessage) : GitBranchSourcePathDescription(Path, Branch)
     {
-        public override string ToString() => $"{Path}@{Branch}#{CommitHash}";
+        public override string ToString() => $"{base.ToString()}#{CommitHash[..8]}:{BotSourcer.ClampStringStart(CommitMessage, 40)}";
     }
 
 
@@ -65,13 +63,29 @@ namespace ChessChallenge.Application
             return output;
         }
 
-        public static string ClampStringLength(string str, int maxLength)
+        public static string ClampStringEnd(string str, int maxLength)
         {
             if (str.Length <= maxLength)
             {
                 return str;
             }
             return "..." + str[(str.Length - maxLength + 3)..];
+        }
+        public static string ClampStringStart(string str, int maxLength)
+        {
+            if (str.Length <= maxLength)
+            {
+                return str;
+            }
+            return str[..(maxLength - 3)] + "...";
+        }
+        public static string ClampString(string str, int maxLength)
+        {
+            if (str.Length <= maxLength)
+            {
+                return str;
+            }
+            return str[..(maxLength / 2 - 2)] + "..." + str[(str.Length - maxLength / 2 + 1)..];
         }
 
         public static string ReadFileFromRepository(string repositoryPath, string commitHash, string filePath)
@@ -125,6 +139,7 @@ namespace ChessChallenge.Application
                             options.Add(file, new GitCommitFileSourceDescription(
                                 gitCommitSourcePathDescription.Path,
                                 gitCommitSourcePathDescription.CommitHash,
+                                gitCommitSourcePathDescription.CommitMessage,
                                 file
                             ));
                         }
@@ -139,19 +154,18 @@ namespace ChessChallenge.Application
                             string[] parts = commit.Split(new[] { '_' }, 2);
                             string hash = parts[0];
                             string message = parts[1];
-                            options.Add(hash[..8] + " " + message, new GitCommitSourcePathDescription(
+                            options.Add(hash[..8] + " " + ClampStringStart(message, 70), new GitCommitSourcePathDescription(
                                 gitBranchSourcePathDescription.Path,
                                 gitBranchSourcePathDescription.Branch,
-                                hash
+                                hash,
+                                message
                             ));
                         }
                         return options;
                     }
-                case GitWorkingTreeSourcePathDescription:
-                    return GetDirectoryOptions();
                 case GitRepositorySourcePathDescription gitRepositorySourcePathDescription:
                     {
-                        options.Add("working tree", new GitWorkingTreeSourcePathDescription(
+                        options.Add("working tree", new SourcePathDescription(
                             gitRepositorySourcePathDescription.Path
                         ));
                         string output = RunGit("branch");
@@ -229,22 +243,17 @@ namespace ChessChallenge.Application
                         gitBranchSourcePathDescription.Path
                     );
                     break;
-                case GitWorkingTreeSourcePathDescription gitWorkingTreeSourcePathDescription:
-                    sourcePathDescription = new GitRepositorySourcePathDescription(
-                        gitWorkingTreeSourcePathDescription.Path
-                    );
-                    break;
                 case GitRepositorySourcePathDescription gitRepositorySourcePathDescription:
                     sourcePathDescription = new SourcePathDescription(
                         Directory.GetParent(gitRepositorySourcePathDescription.Path).FullName
                     );
                     break;
                 case SourcePathDescription rawSourcePathDescription:
-                    bool parentIsGitRepository = Directory.Exists(Path.Combine(rawSourcePathDescription.Path, "..", ".git"));
-                    if (parentIsGitRepository)
+                    bool isGitRepository = Directory.Exists(Path.Combine(rawSourcePathDescription.Path, ".git"));
+                    if (isGitRepository)
                     {
-                        sourcePathDescription = new GitWorkingTreeSourcePathDescription(
-                            Directory.GetParent(rawSourcePathDescription.Path).FullName
+                        sourcePathDescription = new GitRepositorySourcePathDescription(
+                            rawSourcePathDescription.Path
                         );
                     }
                     else
