@@ -17,7 +17,7 @@ namespace ChessChallenge.Application
     }
     class BotSource
     {
-        private static readonly Mutex buildMutex = new();
+        private static readonly object buildLock = new();
 
         private BotInfo? info;
         private string? code;
@@ -99,53 +99,73 @@ namespace ChessChallenge.Application
 
         public async Task<IChessBot> CreateBot()
         {
-            Type type = await GetBotType();
+            Type type = await Task.Run(() => LoadBot());
             IChessBot chessBot =
                 (IChessBot?)Activator.CreateInstance(type) ??
                 throw new Exception("Could not create instance of bot");
             return chessBot;
         }
-        private async Task<Type> GetBotType()
+        private bool DllExists() => File.Exists(DllPath);
+        private Type LoadBot()
         {
-            if (chessBotType != null)
+            lock (buildLock)
             {
-                return chessBotType;
+                if (chessBotType != null)
+                {
+                    return chessBotType;
+                }
+                if (!DllExists())
+                {
+                    BuildBot();
+                }
+                Console.WriteLine($"Loading bot from {DllPath}");
+                Assembly assembly = Assembly.LoadFrom(DllPath);
+                foreach (Type type in assembly.GetTypes())
+                {
+                    if (typeof(IChessBot).IsAssignableFrom(type))
+                    {
+                        chessBotType = type;
+                        return type;
+                    }
+                }
+                throw new Exception("Could not find IChessBot in assembly");
             }
-            if (!DllExists())
-            {
-                await Task.Run(() => BuildBot());
-            }
-            chessBotType = LoadBot();
-            return chessBotType;
         }
         private void BuildBot()
         {
-            buildMutex.WaitOne();
             string buildDirectory = $"{Directory.GetCurrentDirectory()}/build-chessbot";
+            Directory.CreateDirectory(buildDirectory);
             File.WriteAllText($"{buildDirectory}/MyBot.cs", Code);
+            File.WriteAllText($"{buildDirectory}/Chess-Bot.csproj", $@"<Project Sdk=""Microsoft.NET.Sdk"">
+
+  <PropertyGroup>
+    <OutputRoot>.\bin</OutputRoot>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>{hash.ToUpper()}</AssemblyName>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include=""..\Chess-Challenge.csproj"" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include=""..\..\.editorconfig"" Link="".editorconfig"" />
+  </ItemGroup>
+
+</Project>
+");
             string output = RunDotnet(buildDirectory, "build");
             File.Delete($"{buildDirectory}/MyBot.cs");
+            File.Delete($"{buildDirectory}/Chess-Bot.csproj");
             if (output.Contains("Build FAILED"))
             {
                 throw new Exception("Build failed");
             }
-            string buildDllPath = $"{buildDirectory}/bin/Debug/net6.0/Chess-Bot.dll";
+            string buildDllPath = $"{buildDirectory}/bin/Debug/net6.0/{hash.ToUpper()}.dll";
             File.Move(buildDllPath, DllPath);
-            buildMutex.ReleaseMutex();
-        }
-        private bool DllExists() => File.Exists(DllPath);
-        private Type LoadBot()
-        {
-            Assembly assembly = Assembly.LoadFrom(DllPath);
-            foreach (Type type in assembly.GetTypes())
-            {
-                if (typeof(IChessBot).IsAssignableFrom(type))
-                {
-                    chessBotType = type;
-                    return type;
-                }
-            }
-            throw new Exception("Could not find IChessBot in assembly");
         }
 
         private void SaveInfo()
@@ -165,7 +185,10 @@ namespace ChessChallenge.Application
             git.StartInfo.RedirectStandardError = true;
             git.Start();
             string error = git.StandardError.ReadToEnd();
-            Console.WriteLine($"Error output of dotnet -----------------\n{error}\n----------------------------------------");
+            if (!string.IsNullOrEmpty(error))
+            {
+                Console.WriteLine($"Error output of dotnet -----------------\n{error}\n----------------------------------------");
+            }
             string output = git.StandardOutput.ReadToEnd();
             git.WaitForExit();
             return output;

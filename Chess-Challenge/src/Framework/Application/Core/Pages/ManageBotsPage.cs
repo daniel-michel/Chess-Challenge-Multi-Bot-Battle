@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using static ChessChallenge.Application.UI.BasicComponents;
 using static ChessChallenge.Application.UI.LayoutComponents;
 
@@ -38,13 +39,13 @@ namespace ChessChallenge.Application
                                     child: () => Select(
                                         childHeight: 40,
                                         scrollPosition: ref inactiveScrollPosition,
-                                        children: BotManager.instance.GetInactiveBots().ConvertAll<Action>(bot => () => {
+                                        children: BotManager.instance.bots.Values.Where(bot => !Program.botBattle.HasBot(bot.hash)).Select<BotSource, Action>(bot => () => {
                                             FittedTextButton(
                                                 bot.Info.Identifier,
                                                 align: Align.CenterLeft,
-                                                onClick: () => BotManager.instance.ActivateBot(bot.hash)
+                                                onClick: () => Program.botBattle.AddBot(bot)
                                             );
-                                        })
+                                        }).ToList()
                                     )
                                 ),
                                 () => LabeledContainer(
@@ -52,13 +53,13 @@ namespace ChessChallenge.Application
                                     child: () => Select(
                                         childHeight: 40,
                                         scrollPosition: ref activeScrollPosition,
-                                        children: BotManager.instance.GetActiveBots().ConvertAll<Action>(bot => () => {
+                                        children: BotManager.instance.bots.Values.Where(bot => Program.botBattle.HasBot(bot.hash)).Select<BotSource, Action>(bot => () => {
                                             FittedTextButton(
                                                 bot.Info.Identifier,
                                                 align: Align.CenterLeft,
-                                                onClick: () => BotManager.instance.DeactivateBot(bot.hash)
+                                                onClick: () => Program.botBattle.RemoveBot(bot.hash)
                                             );
-                                        })
+                                        }).ToList()
                                     )
                                 )
                             }

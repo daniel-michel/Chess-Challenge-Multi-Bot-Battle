@@ -1,5 +1,6 @@
 ﻿using Raylib_cs;
 using System.IO;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -15,6 +16,7 @@ namespace ChessChallenge.Application
         public static ChallengeController controller = new();
         public static Router router = new();
         public static List<IChessBot> bots = new();
+        public static BotBattle botBattle = new();
 
         public static void Main()
         {
@@ -44,6 +46,8 @@ namespace ChessChallenge.Application
             router.AddPage("manage_bots", new ManageBotsPage());
             router.GoToPage("main");
 
+            Task runningBotBattle = botBattle.Run();
+
             while (!Raylib.WindowShouldClose())
             {
                 Raylib.BeginDrawing();
@@ -57,6 +61,9 @@ namespace ChessChallenge.Application
             }
 
             Raylib.CloseWindow();
+
+            botBattle.Cancel();
+            runningBotBattle.Wait();
 
             controller.Release();
             UIHelper.Release();
