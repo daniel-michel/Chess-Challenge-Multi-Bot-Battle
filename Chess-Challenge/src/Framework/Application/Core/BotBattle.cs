@@ -7,7 +7,7 @@ using ChessChallenge.Chess;
 
 namespace ChessChallenge.Application
 {
-    struct OneSideGameResult
+    class OneSideGameResult
     {
         public string botHash;
         public int winsWithWhite;
@@ -15,7 +15,7 @@ namespace ChessChallenge.Application
         public int drawsWithWhite;
         public int TotalWins { get => winsWithWhite + winsWithBlack; }
     }
-    struct GameResults
+    class GameResults
     {
         public OneSideGameResult firstBot;
         public OneSideGameResult secondBot;
@@ -47,8 +47,8 @@ namespace ChessChallenge.Application
             return $"{first}:{second}";
         }
 
-        Dictionary<string, BotSource> bots = new();
-        Dictionary<string, GameResults> results = new();
+        public Dictionary<string, BotSource> bots = new();
+        public Dictionary<string, GameResults> results = new();
 
         List<(Task<GameResult> task, BotGameRunner gameRunner, string whiteBotHash, string blackBotHash)> runningGames = new();
 
@@ -120,7 +120,7 @@ namespace ChessChallenge.Application
                 whiteBotResults.winsWithWhite++;
                 return;
             }
-            throw new System.Exception("Unknown result");
+            throw new Exception("Unknown result");
         }
 
         public void Cancel()
@@ -128,7 +128,10 @@ namespace ChessChallenge.Application
             cancellationTokenSource.Cancel();
             lock (runningGames)
             {
-
+                foreach (var (_, gameRunner, _, _) in runningGames)
+                {
+                    gameRunner.Cancel();
+                }
             }
         }
 
@@ -159,7 +162,6 @@ namespace ChessChallenge.Application
                     runningGames.Remove(finishedGame);
                 }
                 var result = await finishedGameTask;
-                Console.WriteLine($"Game finished: {whiteHash} vs {blackHash} - {result}");
                 AddResult(whiteHash, blackHash, result);
                 await StartGames();
             }
@@ -174,10 +176,13 @@ namespace ChessChallenge.Application
 
             int currentlyRunningGames = runningGames.Count;
             int gamesToStart = maxConcurrentGames - currentlyRunningGames;
-            var leastPlayedCombinations = LeastPlayedCombination(gamesToStart);
+            if (gamesToStart <= 0)
+            {
+                return;
+            }
+            var leastPlayedCombinations = await Task.Run(() => LeastPlayedCombination(gamesToStart));
             if (leastPlayedCombinations.Count == 0)
             {
-                Console.WriteLine("No games to start");
                 return;
             }
             List<(BotGameRunner gameRunner, string whiteHash, string blackHash)> gameRunners = new();
@@ -189,12 +194,25 @@ namespace ChessChallenge.Application
                 BotGameRunner gameRunner = await GetGameRunner(whiteBot, blackBot, FenUtility.StartPositionFEN, timeControl, timeControl);
                 gameRunners.Add((gameRunner, whiteBot.hash, blackBot.hash));
             }
+            bool countChanged = false;
             lock (runningGames)
             {
-                foreach (var gameRunner in gameRunners)
+                if (runningGames.Count != currentlyRunningGames)
                 {
-                    runningGames.Add((gameRunner.gameRunner.Run(), gameRunner.gameRunner, gameRunner.whiteHash, gameRunner.blackHash));
+                    countChanged = true;
                 }
+                else
+                {
+                    foreach (var gameRunner in gameRunners)
+                    {
+                        runningGames.Add((gameRunner.gameRunner.Run(), gameRunner.gameRunner, gameRunner.whiteHash, gameRunner.blackHash));
+                    }
+                }
+            }
+            if (countChanged)
+            {
+                Console.WriteLine("Count of running games changed, restarting");
+                await StartGames();
             }
         }
 
@@ -223,17 +241,17 @@ namespace ChessChallenge.Application
                         bool add = leastPlayedCombinations.Count < count;
                         if (!add)
                         {
-                            int minPlayedIndex = -1;
+                            int maxPlayedIndex = -1;
                             for (int i = 0; i < leastPlayedCombinations.Count; i++)
                             {
-                                if (leastPlayedCombinations[i].played < gameCount && (minPlayedIndex < 0 || leastPlayedCombinations[i].played < leastPlayedCombinations[minPlayedIndex].played))
+                                if (leastPlayedCombinations[i].played > gameCount && (maxPlayedIndex < 0 || leastPlayedCombinations[i].played > leastPlayedCombinations[maxPlayedIndex].played))
                                 {
-                                    minPlayedIndex = i;
+                                    maxPlayedIndex = i;
                                 }
                             }
-                            if (minPlayedIndex >= 0)
+                            if (maxPlayedIndex >= 0)
                             {
-                                leastPlayedCombinations.RemoveAt(minPlayedIndex);
+                                leastPlayedCombinations.RemoveAt(maxPlayedIndex);
                                 add = true;
                             }
                         }

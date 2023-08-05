@@ -133,5 +133,25 @@ namespace ChessChallenge.Application.UI
                 Raylib.EndShaderMode();
             });
         }
+
+        public static void HorizontalBarSectionChart(List<(float fraction, Color color)> sections)
+        {
+            float totalFraction = 0;
+            foreach ((float fraction, Color color) in sections)
+            {
+                totalFraction += fraction;
+            }
+            DrawClipped(() =>
+            {
+                float currentFraction = 0;
+                foreach ((float fraction, Color color) in sections)
+                {
+                    float width = CurrentWidth * fraction / totalFraction;
+                    Rectangle rect = new(currentFraction / totalFraction * CurrentWidth, 0, width, CurrentHeight);
+                    currentFraction += fraction;
+                    Raylib.DrawRectangleRec(rect, color);
+                }
+            });
+        }
     }
 }

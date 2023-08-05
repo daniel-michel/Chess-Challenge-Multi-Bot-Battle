@@ -44,6 +44,7 @@ namespace ChessChallenge.Application
             router.AddPage("main", new MainPage());
             router.AddPage("add_bot", new AddBotPage());
             router.AddPage("manage_bots", new ManageBotsPage());
+            router.AddPage("battle_statistics", new BattleStatisticsPage());
             router.GoToPage("main");
 
             Task runningBotBattle = botBattle.Run();
@@ -63,7 +64,13 @@ namespace ChessChallenge.Application
             Raylib.CloseWindow();
 
             botBattle.Cancel();
-            runningBotBattle.Wait();
+            try
+            {
+                runningBotBattle.Wait();
+            }
+            catch (System.Exception)
+            {
+            }
 
             controller.Release();
             UIHelper.Release();

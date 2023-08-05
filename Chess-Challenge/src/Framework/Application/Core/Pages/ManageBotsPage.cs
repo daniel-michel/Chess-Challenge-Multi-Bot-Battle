@@ -28,6 +28,10 @@ namespace ChessChallenge.Application
                                 () => TextButton(
                                     "Add Bot",
                                     () => Program.router.GoToPage("add_bot")
+                                ),
+                                () => TextButton(
+                                    "Show Statistics",
+                                    () => Program.router.GoToPage("battle_statistics")
                                 )
                             }
                         ),
